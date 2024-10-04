@@ -40,8 +40,8 @@ Gem::Specification.new do |s|
   s.licenses         = ['MIT']
   s.test_files       = Dir.glob("spec/**/*")
 
-  s.cert_chain       = ['certs/public.pem']
-  s.signing_key      = File.expand_path("~/.gem/certs/private_key.pem") if $0 =~ /gem\z/
+  # s.cert_chain       = ['certs/public.pem']
+  # s.signing_key      = File.expand_path("~/.gem/certs/private_key.pem") if $0 =~ /gem\z/
 
   s.add_dependency 'oj', '~> 3.16'
   s.add_dependency 'multi_json', '~> 1.8'
