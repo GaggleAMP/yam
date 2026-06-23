@@ -12,15 +12,18 @@
 # See the Apache Version 2.0 License for specific language governing
 # permissions and limitations under the License.
 
-require 'restclient'
+require 'faraday'
+require 'faraday/follow_redirects'
+require 'faraday/multipart'
+require 'logger'
 require 'multi_json'
 require 'addressable/uri'
 
 module Yammer
 class HttpAdapter
 
-  def self.log=(output)
-    RestClient.log = output
+  class << self
+    attr_accessor :log
   end
 
   attr_reader :site_url, :connection_options
@@ -59,39 +62,54 @@ class HttpAdapter
   end
 
   def send_request(method, path, opts={})
-    begin
-      params  = opts.fetch(:params, {})
+    unless [:get, :delete, :post, :put].include?(method)
+      raise "Unsupported HTTP method, #{method}"
+    end
 
-      req_opts = self.connection_options.merge({
-        :method  => method,
-        :headers => opts.fetch(:headers, {})
-      })
+    params = opts.fetch(:params, {})
+    response = connection.public_send(method, path) do |request|
+      request.headers.update(opts.fetch(:headers, {}))
+      request.options.timeout = connection_options[:timeout] if connection_options[:timeout]
+      request.options.open_timeout = connection_options[:open_timeout] if connection_options[:open_timeout]
 
-      case method
-      when :get, :delete
-        query = Addressable::URI.form_encode(params)
-        normalized_path = query.empty? ? path : [path, query].join("?")
-        req_opts[:url]  = absolute_url(normalized_path)
-      when :post, :put
-        req_opts[:payload] = params
-        req_opts[:url]     = absolute_url(path)
+      if [:get, :delete].include?(method)
+        request.params.update(params)
       else
-        raise "Unsupported HTTP method, #{method}"
-      end
-
-      resp = RestClient::Request.execute(req_opts)
-    
-      result = Yammer::ApiResponse.new(resp.headers, resp.body, resp.code)
-    rescue => e
-      if e.is_a?(RestClient::ExceptionWithResponse)
-        e.response
-      else
-        raise e
+        request.body = upload_params(params)
       end
     end
+
+    Yammer::ApiResponse.new(response.headers, response.body, response.status)
   end
 
 private
+  def connection
+    Faraday.new(url: site_url, ssl: { verify: connection_options.fetch(:verify_ssl, true) }) do |faraday|
+      faraday.request :multipart
+      faraday.request :url_encoded
+      faraday.response :follow_redirects, limit: connection_options.fetch(:max_redirects, 5)
+      faraday.response :logger, logger if self.class.log
+    end
+  end
+
+  def upload_params(params)
+    params.each_with_object({}) do |(key, value), result|
+      result[key] = if value.respond_to?(:read) && value.respond_to?(:path)
+                      Faraday::UploadIO.new(value, 'application/octet-stream', File.basename(value.path))
+                    else
+                      value
+                    end
+    end
+  end
+
+  def logger
+    return self.class.log if self.class.log.respond_to?(:info)
+
+    output = self.class.log == 'stdout' ? $stdout : self.class.log
+    output = $stderr if self.class.log == 'stderr'
+    Logger.new(output)
+  end
+
   def parsed_url
     Addressable::URI.parse(@site_url)
   end

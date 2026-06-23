@@ -52,7 +52,7 @@ describe Yammer::Api::Message do
   describe '#create_message' do
     it 'should create_message' do
       message = 'Greetings, we come in peace'
-      expect(subject).to receive(:post).with('/api/v1/messages', :body => message)
+      expect(subject).to receive(:post).with('/api/v1/messages', { :body => message })
       subject.create_message(message)
     end
   end

@@ -45,7 +45,9 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'oj', '~> 3.16'
   s.add_dependency 'multi_json', '~> 1.8'
-  s.add_dependency 'rest-client', '~> 2.1'
+  s.add_dependency 'faraday', '~> 1.10'
+  s.add_dependency 'faraday-follow_redirects', '~> 0.3'
+  s.add_dependency 'faraday-multipart', '~> 1.2'
   s.add_dependency 'addressable', '~> 2.4'
   s.add_dependency 'oauth2-client', '~> 2.0'
 
