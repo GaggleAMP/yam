@@ -223,14 +223,13 @@ describe Yammer::Client do
         :body => params,
         :headers => {
           'Accept' =>'application/json',
-          'Accept-Encoding' => 'gzip, deflate',
           'Content-Type'    => 'application/x-www-form-urlencoded',
           'User-Agent'      => "Yammer Ruby Gem #{Yammer::Version}"
         }
       ).to_return(:status => 303, :body => "", :headers => { 'Location' => 'https://www.yammer.com/members'})
 
       stub_request(:get, "https://www.yammer.com/members").
-         with(:headers => {'Accept'=>'application/json', 'Accept-Encoding'=>'gzip, deflate', 'User-Agent'=>"Yammer Ruby Gem #{Yammer::Version}"}).
+         with(:headers => {'Accept'=>'application/json', 'User-Agent'=>"Yammer Ruby Gem #{Yammer::Version}"}).
          to_return(:status => 200, :body => "", :headers => {})
       response = subject.send(:request, :post, '/users', params)
 
@@ -244,7 +243,6 @@ describe Yammer::Client do
          with(
           :headers => {
             'Accept' => 'application/json',
-            'Accept-Encoding'=> 'gzip, deflate',
             'User-Agent'     => "Yammer Ruby Gem #{Yammer::Version}"
           }
         ).to_return(:status => 301, :body => "", :headers => { 'Location' => 'https://www.yammer.com/members'})
@@ -254,12 +252,11 @@ describe Yammer::Client do
          with(
           :headers => {
             'Accept' => 'application/json',
-            'Accept-Encoding'=> 'gzip, deflate',
             'User-Agent'     => "Yammer Ruby Gem #{Yammer::Version}"
           }
         ).to_return(:status => 301, :body => "", :headers => { 'Location' => 'https://www.yammer.com/people'})
 
-      expect { subject.send(:request, :get, '/users') }.to raise_error(RestClient::MaxRedirectsReached)
+      expect { subject.send(:request, :get, '/users') }.to raise_error(Faraday::FollowRedirects::RedirectLimitReached)
     end
 
     it "modifies http 303 redirect from POST to GET " do
@@ -268,8 +265,6 @@ describe Yammer::Client do
         :body => params,
         :headers => {
           'Accept'=>'application/json',
-          'Accept-Encoding'=>'gzip, deflate',
-          'Content-Length'=>'29',
           'Content-Type'=>'application/x-www-form-urlencoded',
           'User-Agent'=>"Yammer Ruby Gem #{Yammer::Version}"
         }
@@ -283,7 +278,6 @@ describe Yammer::Client do
         with(
           :headers => {
             'Accept'=>'application/json',
-            'Accept-Encoding'=>'gzip, deflate',
             'User-Agent'=> "Yammer Ruby Gem #{Yammer::Version}"
           }
       ).to_return(:status => 200, :body => "", :headers => {})
@@ -347,7 +341,10 @@ describe Yammer::Client do
           :body => '{ "response": { "message": "Token not found.", "code": 16, "stat": "fail" } }',
           :status => 401)
 
-        expect(subject.get('/users/1')).to eq('{ "response": { "message": "Token not found.", "code": 16, "stat": "fail" } }')
+        response = subject.get('/users/1')
+
+        expect(response.raw_body).to eq('{ "response": { "message": "Token not found.", "code": 16, "stat": "fail" } }')
+        expect(response.code).to eq(401)
       end
     end
 
@@ -357,7 +354,10 @@ describe Yammer::Client do
           :body => '{ "response": { "message": "Rate limited due to excessive requests.", "code": 33, "stat": "fail" } }',
           :status => 429
         )
-        expect(subject.get('/users/1')).to eq('{ "response": { "message": "Rate limited due to excessive requests.", "code": 33, "stat": "fail" } }')
+        response = subject.get('/users/1')
+
+        expect(response.raw_body).to eq('{ "response": { "message": "Rate limited due to excessive requests.", "code": 33, "stat": "fail" } }')
+        expect(response.code).to eq(429)
       end
     end
   end
