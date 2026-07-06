@@ -17,7 +17,7 @@ module Yammer
     MAJOR = 2 unless defined? Yammer::MAJOR
     MINOR = 6 unless defined? Yammer::MINOR
     PATCH = 0 unless defined? Yammer::PATCH
-    PRE = 'rc1' unless defined? Yammer::PRE
+    PRE = nil unless defined? Yammer::PRE
 
     class << self
 
